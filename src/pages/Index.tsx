@@ -5,6 +5,7 @@ const OGURCHIK_IMG = "https://cdn.poehali.dev/projects/021d657a-82ce-4830-bad8-b
 const LUNTIK_IMG = "https://cdn.poehali.dev/projects/021d657a-82ce-4830-bad8-b52f594f6aa2/bucket/4151adb6-a01e-4b20-93e5-a2c1adef949e.jpg";
 const RYG_IMG = "https://cdn.poehali.dev/projects/021d657a-82ce-4830-bad8-b52f594f6aa2/bucket/58e8fdfc-76d4-479b-8b3b-ca672caeb458.jpg";
 const BLAZE_EXE_IMG = "https://cdn.poehali.dev/projects/021d657a-82ce-4830-bad8-b52f594f6aa2/bucket/c5007675-8ae4-4709-8273-35da5f74df87.jpg";
+const KRUSHILA_IMG = "https://cdn.poehali.dev/projects/021d657a-82ce-4830-bad8-b52f594f6aa2/files/d218fe4b-c577-40ea-8a4f-9cd87cd232cc.jpg";
 
 type Tab = "earn" | "shop" | "achievements" | "news" | "promo" | "settings";
 
@@ -21,11 +22,14 @@ interface GameState {
   clickMultiplier: number;
   usedPromocodes: string[];
   hasExeChar: boolean;
+  selectedCharIdx: number | null;
+  welcomeShown: boolean;
 }
 
 const CHARACTERS = [
   { name: "Вспыш", img: BLAZE_IMG, threshold: 100, color: "#FF6B35" },
   { name: "Огурчик", img: OGURCHIK_IMG, threshold: 250, color: "#4CAF50" },
+  { name: "Крушила", img: KRUSHILA_IMG, threshold: 300, color: "#FFC107" },
   { name: "Лунтик", img: LUNTIK_IMG, threshold: 500, color: "#B39DDB" },
   { name: "Рыг", img: RYG_IMG, threshold: Infinity, color: "#00E676" },
 ];
@@ -40,6 +44,9 @@ const SHOP_ITEMS = [
   { id: "glasses", name: "Очки", emoji: "👓", price: 128, desc: "У тебя зрение ниже нормы?", ach: "glasses_bought", boost: true },
   { id: "blaze_pen", name: "Ручка Вспыша", emoji: "✒️", price: 666, desc: "ЭКСКЛЮЗИВ!", ach: "blaze_pen_bought" },
   { id: "toilet", name: "Унитаз", emoji: "🚽", price: 350, desc: "скибиди доп доп.", ach: "toilet_bought" },
+  { id: "pillow", name: "Подушка", emoji: "🛏️", price: 186, desc: "баю Бай засыпай.", ach: "pillow_bought" },
+  { id: "socks", name: "Носки", emoji: "🧦", price: 444, desc: "noski🥳", ach: "socks_bought" },
+  { id: "mouse", name: "Компьютерная мышка", emoji: "🖱️", price: 500, desc: "Клик-клик.", ach: "mouse_bought" },
 ];
 
 const ACHIEVEMENTS_DATA: Record<string, { name: string; desc: string; emoji: string }> = {
@@ -50,6 +57,9 @@ const ACHIEVEMENTS_DATA: Record<string, { name: string; desc: string; emoji: str
   glasses_bought: { name: "Четыре глаза!", desc: "Купи очки.", emoji: "👓" },
   blaze_pen_bought: { name: "И ЧУДО МАШИНКИ!", desc: "Купи ручку вспыша.", emoji: "✒️" },
   toilet_bought: { name: "скибиди", desc: "Купи унитаз.", emoji: "🚽" },
+  pillow_bought: { name: "😴", desc: "Купи подушку.", emoji: "🛏️" },
+  socks_bought: { name: "🧦", desc: "Купи носки.", emoji: "🧦" },
+  mouse_bought: { name: "🖱️", desc: "Купи компьютерную мышку.", emoji: "🖱️" },
 };
 
 const UPGRADE_BASE_COSTS = { click: 25, passive: 50 };
@@ -70,6 +80,7 @@ function loadGame(): GameState {
     clickUpgrade: 1, passiveUpgrade: 0, purchasedItems: [],
     achievements: [], musicEnabled: true, clickMultiplier: 1,
     usedPromocodes: [], hasExeChar: false,
+    selectedCharIdx: null, welcomeShown: false,
   };
 }
 
@@ -241,6 +252,9 @@ export default function Index() {
   const [tab, setTab] = useState<Tab>("earn");
   const [promoInput, setPromoInput] = useState("");
   const [promoStatus, setPromoStatus] = useState<null | "success" | "already" | "error">(null);
+  const [showCharSelect, setShowCharSelect] = useState(false);
+  const [weatherValue, setWeatherValue] = useState<number | null>(null);
+  const [showWelcome, setShowWelcome] = useState(false);
   const [game, setGame] = useState<GameState>(loadGame);
   const [popups, setPopups] = useState<CoinPopup[]>([]);
   const [toasts, setToasts] = useState<ToastAch[]>([]);
@@ -251,6 +265,21 @@ export default function Index() {
   const clickAreaRef = useRef<HTMLDivElement>(null);
 
   useBgMusic(loaded && game.musicEnabled);
+
+  useEffect(() => {
+    if (loaded && !game.welcomeShown) {
+      setShowWelcome(true);
+    }
+  }, [loaded, game.welcomeShown]);
+
+  const closeWelcome = () => {
+    setShowWelcome(false);
+    setGame(g => {
+      const newG = { ...g, welcomeShown: true };
+      saveGame(newG);
+      return newG;
+    });
+  };
 
   useEffect(() => {
     if (game.passiveUpgrade === 0) return;
@@ -278,7 +307,26 @@ export default function Index() {
   }, []);
 
 
+  const playClickSound = useCallback(() => {
+    try {
+      const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(800, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.08);
+      gain.gain.setValueAtTime(0.18, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.1);
+      setTimeout(() => ctx.close(), 200);
+    } catch { void 0; }
+  }, []);
+
   const handleCharClick = (e: React.MouseEvent) => {
+    playClickSound();
     const rect = clickAreaRef.current?.getBoundingClientRect();
     if (rect) {
       const x = e.clientX - rect.left;
@@ -342,12 +390,25 @@ export default function Index() {
 
   const activatePromo = () => {
     const code = promoInput.trim().toUpperCase();
+    const used = game.usedPromocodes || [];
     if (code === "EXE") {
-      if ((game.usedPromocodes || []).includes("EXE")) {
+      if (used.includes("EXE")) {
         setPromoStatus("already");
       } else {
         setGame(g => {
           const newG = { ...g, hasExeChar: true, usedPromocodes: [...(g.usedPromocodes || []), "EXE"] };
+          saveGame(newG);
+          return newG;
+        });
+        setPromoStatus("success");
+        setPromoInput("");
+      }
+    } else if (code === "MONEY") {
+      if (used.includes("MONEY")) {
+        setPromoStatus("already");
+      } else {
+        setGame(g => {
+          const newG = { ...g, coins: g.coins + 250, usedPromocodes: [...(g.usedPromocodes || []), "MONEY"] };
           saveGame(newG);
           return newG;
         });
@@ -360,9 +421,13 @@ export default function Index() {
     setTimeout(() => setPromoStatus(null), 3000);
   };
 
-  const baseChar = CHARACTERS[game.characterIndex];
+  const allCharsUnlocked = game.characterIndex >= CHARACTERS.length - 1;
+  const selectedIdx = game.selectedCharIdx;
+  const baseChar = (allCharsUnlocked && selectedIdx !== null && selectedIdx >= 0 && selectedIdx < CHARACTERS.length)
+    ? CHARACTERS[selectedIdx]
+    : CHARACTERS[game.characterIndex];
   const char = game.hasExeChar ? { ...EXE_CHARACTER, threshold: baseChar.threshold } : baseChar;
-  const nextChar = game.hasExeChar ? null : CHARACTERS[game.characterIndex + 1];
+  const nextChar = game.hasExeChar || allCharsUnlocked ? null : CHARACTERS[game.characterIndex + 1];
   const clickCost = getUpgradeCost(UPGRADE_BASE_COSTS.click, game.clickUpgrade - 1);
   const passiveCost = getUpgradeCost(UPGRADE_BASE_COSTS.passive, game.passiveUpgrade);
   const progressToNext = nextChar ? Math.min(game.characterClicks / CHARACTERS[game.characterIndex].threshold, 1) : 1;
@@ -437,25 +502,35 @@ export default function Index() {
               </div>
 
               {/* Character */}
-              <div ref={clickAreaRef} className="relative flex items-center justify-center" style={{ width: 200, height: 200 }}>
-                <div
-                  className="cursor-pointer select-none"
-                  onClick={handleCharClick}
-                  style={{
-                    width: 180, height: 180,
-                    borderRadius: "50%",
-                    border: `3px solid ${char.color}`,
-                    boxShadow: `0 0 40px ${char.color}60, 0 0 80px ${char.color}20`,
-                    overflow: "hidden",
-                    background: "rgba(255,255,255,0.05)",
-                    animation: charAnim ? "bounce-click 0.3s ease-out" : "float 3s ease-in-out infinite",
-                    transition: "box-shadow 0.2s",
-                  }}>
-                  <img src={char.img} alt={char.name} style={{ width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none", userSelect: "none" }} />
+              <div className="relative flex items-center justify-center w-full" style={{ height: 200 }}>
+                <div ref={clickAreaRef} className="relative flex items-center justify-center" style={{ width: 200, height: 200 }}>
+                  <div
+                    className="cursor-pointer select-none"
+                    onClick={handleCharClick}
+                    style={{
+                      width: 180, height: 180,
+                      borderRadius: "50%",
+                      border: `3px solid ${char.color}`,
+                      boxShadow: `0 0 40px ${char.color}60, 0 0 80px ${char.color}20`,
+                      overflow: "hidden",
+                      background: "rgba(255,255,255,0.05)",
+                      animation: charAnim ? "bounce-click 0.3s ease-out" : "float 3s ease-in-out infinite",
+                      transition: "box-shadow 0.2s",
+                    }}>
+                    <img src={char.img} alt={char.name} style={{ width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none", userSelect: "none" }} />
+                  </div>
+                  {popups.map(p => (
+                    <div key={p.id} className="coin-popup" style={{ left: p.x, top: p.y }}>+{p.value}💰</div>
+                  ))}
                 </div>
-                {popups.map(p => (
-                  <div key={p.id} className="coin-popup" style={{ left: p.x, top: p.y }}>+{p.value}💰</div>
-                ))}
+                {allCharsUnlocked && (
+                  <button
+                    onClick={() => setShowCharSelect(true)}
+                    className="absolute right-2 px-3 py-2 rounded-2xl font-black text-xs"
+                    style={{ background: "linear-gradient(135deg, #00E676, #00BF5A)", color: "#000", top: "50%", transform: "translateY(-50%)" }}>
+                    🎭 Выбор
+                  </button>
+                )}
               </div>
 
               <div className="text-center text-xs" style={{ color: "hsl(220 10% 50%)" }}>
@@ -541,6 +616,12 @@ export default function Index() {
                     </div>
                   );
                 })}
+                <button
+                  onClick={() => setWeatherValue(Math.floor(Math.random() * 2001) - 1000)}
+                  className="item-card text-center font-black text-sm transition-all hover:opacity-80 w-full mt-2"
+                  style={{ color: "#4FC3F7", borderColor: "rgba(79,195,247,0.4)", background: "rgba(79,195,247,0.06)", cursor: "pointer" }}>
+                  ☁️ Прогноз погоды
+                </button>
               </div>
             </div>
           )}
@@ -733,7 +814,7 @@ export default function Index() {
         </div>
 
         {/* Bottom Nav */}
-        <div className="relative z-10 flex justify-around items-center px-2 py-2 mx-3 mb-3 rounded-3xl glass flex-shrink-0"
+        <div className="relative z-10 flex justify-center gap-0.5 items-center px-1 py-2 mx-3 mb-3 rounded-3xl glass flex-shrink-0"
           style={{ borderColor: "rgba(255,255,255,0.08)" }}>
           {TABS.map(t => (
             <button key={t.id} onClick={() => setTab(t.id)}
@@ -744,6 +825,83 @@ export default function Index() {
           ))}
         </div>
       </div>
+
+      {/* Welcome Modal */}
+      {showWelcome && loaded && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.75)" }}>
+          <div className="glass rounded-3xl p-6 max-w-sm w-full text-center" style={{ border: "1px solid rgba(255,215,0,0.4)" }}>
+            <div className="text-5xl mb-4">😭</div>
+            <p className="font-black text-white text-lg mb-6" style={{ fontFamily: "Montserrat" }}>
+              Это последняя обнова до мая😭
+            </p>
+            <div className="flex gap-3">
+              <button onClick={closeWelcome}
+                className="flex-1 py-3 rounded-2xl font-black text-sm"
+                style={{ background: "linear-gradient(135deg, #FFD700, #FF9500)", color: "#000" }}>
+                Жаль😭
+              </button>
+              <button onClick={closeWelcome}
+                className="flex-1 py-3 rounded-2xl font-black text-sm"
+                style={{ background: "rgba(255,255,255,0.1)", color: "#fff" }}>
+                Пропустить
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Weather Modal */}
+      {weatherValue !== null && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.75)" }} onClick={() => setWeatherValue(null)}>
+          <div className="glass rounded-3xl p-6 max-w-xs w-full text-center" style={{ border: "1px solid rgba(79,195,247,0.4)" }} onClick={e => e.stopPropagation()}>
+            <div className="text-5xl mb-3">☁️</div>
+            <p className="text-sm mb-2" style={{ color: "hsl(220 10% 60%)" }}>Прогноз погоды</p>
+            <p className="font-black text-4xl mb-5" style={{ color: weatherValue >= 0 ? "#FFD700" : "#4FC3F7" }}>
+              {weatherValue > 0 ? "+" : ""}{weatherValue}°
+            </p>
+            <button onClick={() => setWeatherValue(null)}
+              className="w-full py-3 rounded-2xl font-black text-sm"
+              style={{ background: "linear-gradient(135deg, #4FC3F7, #29B6F6)", color: "#000" }}>
+              Закрыть
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Character Select Modal */}
+      {showCharSelect && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.75)" }} onClick={() => setShowCharSelect(false)}>
+          <div className="glass rounded-3xl p-5 max-w-sm w-full" style={{ border: "1px solid rgba(0,230,118,0.4)" }} onClick={e => e.stopPropagation()}>
+            <p className="font-black text-white text-lg mb-4 text-center" style={{ fontFamily: "Montserrat" }}>🎭 Выбери персонажа</p>
+            <div className="grid grid-cols-2 gap-3">
+              {CHARACTERS.map((c, i) => {
+                const active = (selectedIdx ?? game.characterIndex) === i;
+                return (
+                  <button key={c.name}
+                    onClick={() => {
+                      setGame(g => {
+                        const newG = { ...g, selectedCharIdx: i };
+                        saveGame(newG);
+                        return newG;
+                      });
+                      setShowCharSelect(false);
+                    }}
+                    className="rounded-2xl p-3 transition-all flex flex-col items-center gap-2"
+                    style={{ background: active ? `${c.color}22` : "rgba(255,255,255,0.05)", border: `2px solid ${active ? c.color : "rgba(255,255,255,0.1)"}` }}>
+                    <img src={c.img} alt={c.name} style={{ width: 60, height: 60, borderRadius: "50%", objectFit: "cover" }} />
+                    <p className="font-bold text-xs" style={{ color: c.color }}>{c.name}</p>
+                  </button>
+                );
+              })}
+            </div>
+            <button onClick={() => setShowCharSelect(false)}
+              className="w-full mt-4 py-3 rounded-2xl font-bold text-sm"
+              style={{ background: "rgba(255,255,255,0.08)", color: "#fff" }}>
+              Закрыть
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }
