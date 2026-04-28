@@ -47,8 +47,7 @@
   }
 
   body {
-    @apply text-foreground;
-    background: linear-gradient(135deg, #0d0f1a 0%, #10131c 50%, #0b0d16 100%);
+    @apply bg-background text-foreground;
     font-family: "Rubik", sans-serif;
     overflow: hidden;
   }

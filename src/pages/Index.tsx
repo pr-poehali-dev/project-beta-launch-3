@@ -235,7 +235,7 @@ function useBgMusic(enabled: boolean) {
 }
 
 export default function Index() {
-  const [loaded] = useState(true);
+  const [loaded, setLoaded] = useState(false);
   const [tab, setTab] = useState<Tab>("earn");
   const [game, setGame] = useState<GameState>(loadGame);
   const [popups, setPopups] = useState<CoinPopup[]>([]);
@@ -367,7 +367,8 @@ export default function Index() {
 
   return (
     <>
-      <div className="fixed inset-0 flex flex-col"
+      {!loaded && <Preloader onDone={() => setLoaded(true)} />}
+      <div className={`fixed inset-0 flex flex-col transition-opacity duration-500 ${loaded ? "opacity-100" : "opacity-0"}`}
         style={{ background: "linear-gradient(135deg, #0d0f1a 0%, #10131c 50%, #0b0d16 100%)" }}>
         <EmojiBg />
 
