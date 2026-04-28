@@ -45,6 +45,10 @@ const ACHIEVEMENTS_DATA: Record<string, { name: string; desc: string; emoji: str
   glasses_bought: { name: "Четыре глаза!", desc: "Купи очки.", emoji: "👓" },
   blaze_pen_bought: { name: "И ЧУДО МАШИНКИ!", desc: "Купи ручку вспыша.", emoji: "✒️" },
   toilet_bought: { name: "скибиди", desc: "Купи унитаз.", emoji: "🚽" },
+  coins_100: { name: "Твое начало!", desc: "Получи 100 монет.", emoji: "💰" },
+  coins_250: { name: "Ты уже круче бомжей на улице!", desc: "Достигните 250 монет.", emoji: "💵" },
+  coins_500: { name: "Это уже 1/2 тысячи!", desc: "Достигни 500 монет.", emoji: "🪙" },
+  coins_1000: { name: "Не имей 100 друзей, а имей 1000 рублей!", desc: "Достигни 1000 монет!", emoji: "🤑" },
 };
 
 const UPGRADE_BASE_COSTS = { click: 25, passive: 50 };
@@ -251,11 +255,12 @@ export default function Index() {
       setGame(g => {
         const newG = { ...g, coins: g.coins + perSec };
         saveGame(newG);
+        checkCoinAchievements(newG.coins, newG.achievements);
         return newG;
       });
     }, 1000);
     return () => clearInterval(iv);
-  }, [game.passiveUpgrade, game.clickMultiplier]);
+  }, [game.passiveUpgrade, game.clickMultiplier, checkCoinAchievements]);
 
   const addAchievement = useCallback((key: string) => {
     setGame(g => {
@@ -268,6 +273,20 @@ export default function Index() {
       return newG;
     });
   }, []);
+
+  const checkCoinAchievements = useCallback((coins: number, achievements: string[]) => {
+    const milestones = [
+      { threshold: 100, key: "coins_100" },
+      { threshold: 250, key: "coins_250" },
+      { threshold: 500, key: "coins_500" },
+      { threshold: 1000, key: "coins_1000" },
+    ];
+    milestones.forEach(({ threshold, key }) => {
+      if (coins >= threshold && !achievements.includes(key)) {
+        addAchievement(key);
+      }
+    });
+  }, [addAchievement]);
 
   const handleCharClick = (e: React.MouseEvent) => {
     const rect = clickAreaRef.current?.getBoundingClientRect();
@@ -297,6 +316,7 @@ export default function Index() {
       }
       const newG = { ...g, coins: g.coins + earned, totalClicks: g.totalClicks + 1, characterClicks: newCharClicks, characterIndex: newCharIdx };
       saveGame(newG);
+      checkCoinAchievements(newG.coins, newG.achievements);
       return newG;
     });
   };
