@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 
-const BLAZE_IMG = "https://cdn.poehali.dev/projects/021d657a-82ce-4830-bad8-b52f594f6aa2/files/343b5f1e-e468-4561-9bf5-f28733099434.jpg";
+const BLAZE_IMG = "https://cdn.poehali.dev/projects/021d657a-82ce-4830-bad8-b52f594f6aa2/bucket/4c097f9a-91af-425e-9ab9-64bfeb8b7d7b.jpg";
 const OGURCHIK_IMG = "https://cdn.poehali.dev/projects/021d657a-82ce-4830-bad8-b52f594f6aa2/files/4d26be2c-e84a-48f3-b748-a2d7e4e946b9.jpg";
 const LUNTIK_IMG = "https://cdn.poehali.dev/projects/021d657a-82ce-4830-bad8-b52f594f6aa2/files/3fba030f-297d-49b4-ac0f-92022afbb6e7.jpg";
 const RYG_IMG = "https://cdn.poehali.dev/projects/021d657a-82ce-4830-bad8-b52f594f6aa2/files/282a2c86-9506-4625-a1f6-f6b94e5557b4.jpg";
