@@ -343,7 +343,7 @@ export default function Index() {
   const activatePromo = () => {
     const code = promoInput.trim().toUpperCase();
     if (code === "EXE") {
-      if (game.usedPromocodes.includes("EXE")) {
+      if ((game.usedPromocodes || []).includes("EXE")) {
         setPromoStatus("already");
       } else {
         setGame(g => {
