@@ -150,6 +150,86 @@ const Preloader = ({ onDone }: { onDone: () => void }) => {
   );
 };
 
+function useBgMusic(enabled: boolean) {
+  const ctxRef = useRef<AudioContext | null>(null);
+  const nodesRef = useRef<{ osc: OscillatorNode; gain: GainNode }[]>([]);
+  const masterRef = useRef<GainNode | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const MELODY = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25];
+  const CHORD_PROG = [
+    [261.63, 329.63, 392.00],
+    [293.66, 349.23, 440.00],
+    [329.63, 392.00, 493.88],
+    [261.63, 329.63, 392.00],
+  ];
+
+  const stopMusic = useCallback(() => {
+    nodesRef.current.forEach(({ osc, gain }) => {
+      try { gain.gain.setTargetAtTime(0, ctxRef.current!.currentTime, 0.3); setTimeout(() => { try { osc.stop(); } catch { void 0; } }, 400); } catch { void 0; }
+    });
+    nodesRef.current = [];
+    if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
+  }, []);
+
+  const startMusic = useCallback(() => {
+    if (!ctxRef.current) ctxRef.current = new AudioContext();
+    const ctx = ctxRef.current;
+    if (ctx.state === "suspended") ctx.resume();
+
+    const master = ctx.createGain();
+    master.gain.setValueAtTime(0.08, ctx.currentTime);
+    master.connect(ctx.destination);
+    masterRef.current = master;
+
+    let chordIdx = 0;
+    const playChord = () => {
+      const chord = CHORD_PROG[chordIdx % CHORD_PROG.length];
+      chord.forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = i === 0 ? "sine" : "triangle";
+        osc.frequency.setValueAtTime(freq, ctx.currentTime);
+        gain.gain.setValueAtTime(0, ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.3 - i * 0.07, ctx.currentTime + 0.3);
+        osc.connect(gain);
+        gain.connect(master);
+        osc.start();
+        nodesRef.current.push({ osc, gain });
+        gain.gain.setTargetAtTime(0, ctx.currentTime + 1.5, 0.6);
+        setTimeout(() => { try { osc.stop(); } catch { void 0; } nodesRef.current = nodesRef.current.filter(n => n.osc !== osc); }, 3500);
+      });
+
+      const mOsc = ctx.createOscillator();
+      const mGain = ctx.createGain();
+      mOsc.type = "sine";
+      mOsc.frequency.setValueAtTime(MELODY[Math.floor(Math.random() * MELODY.length)], ctx.currentTime);
+      mGain.gain.setValueAtTime(0, ctx.currentTime);
+      mGain.gain.linearRampToValueAtTime(0.18, ctx.currentTime + 0.2);
+      mOsc.connect(mGain);
+      mGain.connect(master);
+      mOsc.start();
+      nodesRef.current.push({ osc: mOsc, gain: mGain });
+      mGain.gain.setTargetAtTime(0, ctx.currentTime + 0.8, 0.4);
+      setTimeout(() => { try { mOsc.stop(); } catch { void 0; } nodesRef.current = nodesRef.current.filter(n => n.osc !== mOsc); }, 2500);
+
+      chordIdx++;
+    };
+
+    playChord();
+    intervalRef.current = setInterval(playChord, 2800);
+  }, []);
+
+  useEffect(() => {
+    if (enabled) {
+      startMusic();
+    } else {
+      stopMusic();
+    }
+    return stopMusic;
+  }, [enabled, startMusic, stopMusic]);
+}
+
 export default function Index() {
   const [loaded, setLoaded] = useState(false);
   const [tab, setTab] = useState<Tab>("earn");
@@ -161,6 +241,8 @@ export default function Index() {
   const popupIdRef = useRef(0);
   const toastIdRef = useRef(0);
   const clickAreaRef = useRef<HTMLDivElement>(null);
+
+  useBgMusic(loaded && game.musicEnabled);
 
   useEffect(() => {
     if (game.passiveUpgrade === 0) return;
