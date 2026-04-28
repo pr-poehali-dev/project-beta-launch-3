@@ -4,8 +4,9 @@ const BLAZE_IMG = "https://cdn.poehali.dev/projects/021d657a-82ce-4830-bad8-b52f
 const OGURCHIK_IMG = "https://cdn.poehali.dev/projects/021d657a-82ce-4830-bad8-b52f594f6aa2/bucket/b89b982f-c7a0-41a5-a56a-78cdd053ab5e.jpg";
 const LUNTIK_IMG = "https://cdn.poehali.dev/projects/021d657a-82ce-4830-bad8-b52f594f6aa2/bucket/4151adb6-a01e-4b20-93e5-a2c1adef949e.jpg";
 const RYG_IMG = "https://cdn.poehali.dev/projects/021d657a-82ce-4830-bad8-b52f594f6aa2/bucket/58e8fdfc-76d4-479b-8b3b-ca672caeb458.jpg";
+const BLAZE_EXE_IMG = "https://cdn.poehali.dev/projects/021d657a-82ce-4830-bad8-b52f594f6aa2/bucket/c5007675-8ae4-4709-8273-35da5f74df87.jpg";
 
-type Tab = "earn" | "shop" | "achievements" | "news" | "settings";
+type Tab = "earn" | "shop" | "achievements" | "news" | "promo" | "settings";
 
 interface GameState {
   coins: number;
@@ -18,6 +19,8 @@ interface GameState {
   achievements: string[];
   musicEnabled: boolean;
   clickMultiplier: number;
+  usedPromocodes: string[];
+  hasExeChar: boolean;
 }
 
 const CHARACTERS = [
@@ -26,6 +29,8 @@ const CHARACTERS = [
   { name: "Лунтик", img: LUNTIK_IMG, threshold: 500, color: "#B39DDB" },
   { name: "Рыг", img: RYG_IMG, threshold: Infinity, color: "#00E676" },
 ];
+
+const EXE_CHARACTER = { name: "ВСПЫШ ЕХЕ", img: BLAZE_EXE_IMG, color: "#FF0000" };
 
 const SHOP_ITEMS = [
   { id: "pot", name: "Кастрюля", emoji: "🍲", price: 50, desc: "Кастрюля.", ach: "pot_bought" },
@@ -64,6 +69,7 @@ function loadGame(): GameState {
     coins: 0, totalClicks: 0, characterClicks: 0, characterIndex: 0,
     clickUpgrade: 1, passiveUpgrade: 0, purchasedItems: [],
     achievements: [], musicEnabled: true, clickMultiplier: 1,
+    usedPromocodes: [], hasExeChar: false,
   };
 }
 
@@ -233,6 +239,8 @@ function useBgMusic(enabled: boolean) {
 export default function Index() {
   const [loaded, setLoaded] = useState(false);
   const [tab, setTab] = useState<Tab>("earn");
+  const [promoInput, setPromoInput] = useState("");
+  const [promoStatus, setPromoStatus] = useState<null | "success" | "already" | "error">(null);
   const [game, setGame] = useState<GameState>(loadGame);
   const [popups, setPopups] = useState<CoinPopup[]>([]);
   const [toasts, setToasts] = useState<ToastAch[]>([]);
@@ -332,8 +340,29 @@ export default function Index() {
     addAchievement(item.ach);
   };
 
-  const char = CHARACTERS[game.characterIndex];
-  const nextChar = CHARACTERS[game.characterIndex + 1];
+  const activatePromo = () => {
+    const code = promoInput.trim().toUpperCase();
+    if (code === "EXE") {
+      if (game.usedPromocodes.includes("EXE")) {
+        setPromoStatus("already");
+      } else {
+        setGame(g => {
+          const newG = { ...g, hasExeChar: true, usedPromocodes: [...(g.usedPromocodes || []), "EXE"] };
+          saveGame(newG);
+          return newG;
+        });
+        setPromoStatus("success");
+        setPromoInput("");
+      }
+    } else {
+      setPromoStatus("error");
+    }
+    setTimeout(() => setPromoStatus(null), 3000);
+  };
+
+  const baseChar = CHARACTERS[game.characterIndex];
+  const char = game.hasExeChar ? { ...EXE_CHARACTER, threshold: baseChar.threshold } : baseChar;
+  const nextChar = game.hasExeChar ? null : CHARACTERS[game.characterIndex + 1];
   const clickCost = getUpgradeCost(UPGRADE_BASE_COSTS.click, game.clickUpgrade - 1);
   const passiveCost = getUpgradeCost(UPGRADE_BASE_COSTS.passive, game.passiveUpgrade);
   const progressToNext = nextChar ? Math.min(game.characterClicks / CHARACTERS[game.characterIndex].threshold, 1) : 1;
@@ -343,6 +372,7 @@ export default function Index() {
     { id: "shop", label: "Магазин", emoji: "🛒" },
     { id: "achievements", label: "Ачивки", emoji: "🏆" },
     { id: "news", label: "Новости", emoji: "📰" },
+    { id: "promo", label: "Промокод", emoji: "🎁" },
     { id: "settings", label: "Настройки", emoji: "⚙️" },
   ];
 
@@ -536,6 +566,58 @@ export default function Index() {
                   );
                 })}
               </div>
+            </div>
+          )}
+
+          {/* PROMO TAB */}
+          {tab === "promo" && (
+            <div className="h-full flex flex-col px-4 pt-2 animate-slide-up">
+              <h2 className="text-xl font-black text-white mb-1 flex-shrink-0" style={{ fontFamily: "Montserrat" }}>Промокоды 🎁</h2>
+              <p className="text-xs mb-5 flex-shrink-0" style={{ color: "hsl(220 10% 50%)" }}>Введи промокод и получи награду</p>
+              <div className="flex flex-col gap-3 max-w-sm w-full">
+                <div className="flex gap-2">
+                  <input
+                    value={promoInput}
+                    onChange={e => setPromoInput(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && activatePromo()}
+                    placeholder="Введи промокод..."
+                    className="flex-1 rounded-2xl px-4 py-3 text-sm font-bold outline-none"
+                    style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", color: "#fff" }}
+                  />
+                  <button
+                    onClick={activatePromo}
+                    className="px-5 py-3 rounded-2xl font-black text-sm"
+                    style={{ background: "linear-gradient(135deg, #FFD700, #FF9500)", color: "#000" }}>
+                    ОК
+                  </button>
+                </div>
+                {promoStatus === "success" && (
+                  <div className="rounded-2xl px-4 py-3 text-sm font-bold" style={{ background: "rgba(0,230,118,0.15)", border: "1px solid rgba(0,230,118,0.4)", color: "#00E676" }}>
+                    ✅ Промокод активирован! Получен секретный персонаж ВСПЫШ ЕХЕ!
+                  </div>
+                )}
+                {promoStatus === "already" && (
+                  <div className="rounded-2xl px-4 py-3 text-sm font-bold" style={{ background: "rgba(255,215,0,0.1)", border: "1px solid rgba(255,215,0,0.3)", color: "#FFD700" }}>
+                    ⚠️ Промокод уже был использован
+                  </div>
+                )}
+                {promoStatus === "error" && (
+                  <div className="rounded-2xl px-4 py-3 text-sm font-bold" style={{ background: "rgba(255,82,82,0.1)", border: "1px solid rgba(255,82,82,0.3)", color: "#FF5252" }}>
+                    ❌ Неверный промокод
+                  </div>
+                )}
+              </div>
+
+              {game.hasExeChar && (
+                <div className="mt-6 item-card flex items-center gap-4" style={{ borderColor: "rgba(255,0,0,0.5)", background: "rgba(255,0,0,0.06)" }}>
+                  <img src={EXE_CHARACTER.img} alt="ВСПЫШ ЕХЕ" style={{ width: 64, height: 64, borderRadius: "50%", border: "2px solid #FF0000", objectFit: "cover" }} />
+                  <div>
+                    <p className="font-black text-sm" style={{ color: "#FF0000" }}>ВСПЫШ ЕХЕ</p>
+                    <p className="text-xs mt-0.5" style={{ color: "hsl(220 10% 55%)" }}>Секретный персонаж разблокирован 🔓</p>
+                  </div>
+                  <span className="ml-auto text-lg">☠️</span>
+                </div>
+              )}
             </div>
           )}
 
