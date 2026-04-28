@@ -34,6 +34,7 @@ const SHOP_ITEMS = [
   { id: "tv", name: "Телевизор", emoji: "📺", price: 275, desc: "Всегда весело посмотреть телевизор вечером!", ach: "tv_bought" },
   { id: "glasses", name: "Очки", emoji: "👓", price: 128, desc: "У тебя зрение ниже нормы?", ach: "glasses_bought", boost: true },
   { id: "blaze_pen", name: "Ручка Вспыша", emoji: "✒️", price: 666, desc: "ЭКСКЛЮЗИВ!", ach: "blaze_pen_bought" },
+  { id: "toilet", name: "Унитаз", emoji: "🚽", price: 350, desc: "скибиди доп доп.", ach: "toilet_bought" },
 ];
 
 const ACHIEVEMENTS_DATA: Record<string, { name: string; desc: string; emoji: string }> = {
@@ -43,6 +44,7 @@ const ACHIEVEMENTS_DATA: Record<string, { name: string; desc: string; emoji: str
   tv_bought: { name: "Любишь залипать?", desc: "Купи телек.", emoji: "📺" },
   glasses_bought: { name: "Четыре глаза!", desc: "Купи очки.", emoji: "👓" },
   blaze_pen_bought: { name: "И ЧУДО МАШИНКИ!", desc: "Купи ручку вспыша.", emoji: "✒️" },
+  toilet_bought: { name: "скибиди", desc: "Купи унитаз.", emoji: "🚽" },
 };
 
 const UPGRADE_BASE_COSTS = { click: 25, passive: 50 };
