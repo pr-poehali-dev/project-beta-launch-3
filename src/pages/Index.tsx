@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 
 const BLAZE_IMG = "https://cdn.poehali.dev/projects/021d657a-82ce-4830-bad8-b52f594f6aa2/bucket/4c097f9a-91af-425e-9ab9-64bfeb8b7d7b.jpg";
 const OGURCHIK_IMG = "https://cdn.poehali.dev/projects/021d657a-82ce-4830-bad8-b52f594f6aa2/bucket/b89b982f-c7a0-41a5-a56a-78cdd053ab5e.jpg";
-const LUNTIK_IMG = "https://cdn.poehali.dev/projects/021d657a-82ce-4830-bad8-b52f594f6aa2/files/3fba030f-297d-49b4-ac0f-92022afbb6e7.jpg";
+const LUNTIK_IMG = "https://cdn.poehali.dev/projects/021d657a-82ce-4830-bad8-b52f594f6aa2/bucket/4151adb6-a01e-4b20-93e5-a2c1adef949e.jpg";
 const RYG_IMG = "https://cdn.poehali.dev/projects/021d657a-82ce-4830-bad8-b52f594f6aa2/bucket/58e8fdfc-76d4-479b-8b3b-ca672caeb458.jpg";
 
 type Tab = "earn" | "shop" | "achievements" | "news" | "settings";
